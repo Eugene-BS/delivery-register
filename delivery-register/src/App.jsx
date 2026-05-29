@@ -18,26 +18,28 @@ async function saveEntries(entries) {
 
 async function extractFromImage(base64Image) {
   const systemPrompt = [
-    "You are an expert handwriting OCR specialist for a supplier delivery register system.",
-    "Your job is to carefully read handwritten delivery slips and extract field values with maximum accuracy.",
+    "You are an expert OCR system reading a printed DELIVERY SLIP form that has been filled in by hand.",
     "",
-    "INSTRUCTIONS:",
-    "- Examine the image carefully and locate each labelled field on the slip",
-    "- Read the handwritten text written next to or below each label",
-    "- For each field, make your best attempt even if the handwriting is messy or unclear",
-    "- NEVER leave a field empty if there is ANY writing present - give your best interpretation",
-    "- For dates: look for numbers in DD/MM/YYYY or similar formats",
-    "- For times: look for numbers with colon or slash separators e.g. 08:30 or 14h00",
-    "- For vehicle registration: South African plates follow formats like CA 123-456",
-    "- For names: read carefully character by character, attempt the full name even if uncertain",
-    "- For PO/delivery note numbers: these are usually numeric or alphanumeric codes",
-    "- If a field is genuinely blank with no writing at all, return an empty string",
-    "- Do NOT return the word illegible - always attempt a reading even if imperfect",
+    "THE SLIP HAS THESE PRINTED LABELS IN ORDER FROM TOP TO BOTTOM:",
+    "1. DATE",
+    "2. TIME IN",
+    "3. SUPPLIER / COMPANY NAME",
+    "4. DRIVER NAME",
+    "5. VEHICLE REGISTRATION",
+    "6. DELIVERY NOTE / PO NO.",
     "",
-    "Return ONLY a raw JSON object with exactly these keys:",
-    "date, timeIn, supplierName, driverName, vehicleReg, deliveryNoPO",
+    "Each label is printed in small capital letters. Below or next to each label is a horizontal line where the person wrote their answer by hand in pen.",
     "",
-    "No markdown, no code fences, no explanation. Only the JSON object."
+    "YOUR TASK:",
+    "Read the handwritten text on each line and return it exactly as written.",
+    "The handwriting may be in cursive, print, or mixed. It may be in pen (blue, black or green).",
+    "Even if you are only 60% sure, give your best reading - do not say illegible.",
+    "For vehicle registrations: South African format is 2 letters + 3 digits + 3 digits e.g. CY 236 861 or CA 123-456.",
+    "For dates: may be written as 29 MAY 26 or 29/05/26 or similar.",
+    "For times: may be written as 2:49 or 14:30 or 08h00.",
+    "",
+    "Return ONLY this exact JSON with no extra text, no markdown, no code fences:",
+    '{"date":"...","timeIn":"...","supplierName":"...","driverName":"...","vehicleReg":"...","deliveryNoPO":"..."}'
   ].join("\n");
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -45,11 +47,11 @@ async function extractFromImage(base64Image) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
+      max_tokens: 500,
       system: systemPrompt,
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64Image } },
-        { type: "text", text: "Please carefully read all handwritten fields on this delivery slip and extract them into the JSON format. Take your time to examine each field area closely." }
+        { type: "text", text: "Read every handwritten field on this delivery slip. Return only the JSON object." }
       ]}]
     })
   });
@@ -58,6 +60,7 @@ async function extractFromImage(base64Image) {
   try { return JSON.parse(text.replace(/```json|```/g, "").trim()); }
   catch { return {}; }
 }
+
 
 function QRCode({ url, size = 160 }) {
   return (
@@ -74,11 +77,11 @@ function SlipTemplate({ captureUrl }) {
       <div style={{ textAlign: "center", borderBottom: "2px solid #111", paddingBottom: 12, marginBottom: 14 }}>
         <div style={{ fontSize: 11, letterSpacing: 4, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Supplier Delivery Register</div>
         <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase" }}>DELIVERY SLIP</div>
-        <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Complete all fields clearly in BLOCK LETTERS</div>
+        <div style={{ fontSize: 11, color: "#888", marginTop: 4, fontWeight: 700 }}>Complete all fields clearly in BLOCK LETTERS</div>
       </div>
       {["Date", "Time In", "Supplier / Company Name", "Driver Name", "Vehicle Registration", "Delivery Note / PO No."].map(label => (
         <div key={label} style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: "#666", marginBottom: 4 }}>{label}</div>
+          <div style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: "#666", marginBottom: 4, fontWeight: 900 }}>{label}</div>
           <div style={{ borderBottom: "1px solid #333", height: 24 }} />
         </div>
       ))}
@@ -176,13 +179,13 @@ function CapturePage({ onSave, onBack }) {
   if (step === "review") return (
     <div style={{ minHeight: "100dvh", background: "#0d1117", padding: "20px 16px 40px", fontFamily: "'Courier New', monospace" }}>
       {backBtn("← Back", () => setStep("capture"))}
-      <div style={{ color: "#4f8ef7", fontSize: 10, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 }}>Step 2 of 2</div>
+      <div style={{ color: "#4f8ef7", fontSize: 10, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4, fontWeight: 900 }}>Step 2 of 2</div>
       <div style={{ color: "#fff", fontSize: 20, fontWeight: 900, letterSpacing: 1, marginBottom: 4 }}>Review & Confirm</div>
-      <div style={{ color: "#8892a4", fontSize: 12, marginBottom: 20 }}>AI extracted the fields below. Correct anything that's wrong.</div>
+      <div style={{ color: "#8892a4", fontSize: 13, marginBottom: 20, fontWeight: 700 }}>AI extracted the fields below. Correct anything that's wrong.</div>
       {imagePreview && <img src={imagePreview} alt="Slip" style={{ width: "100%", borderRadius: 8, marginBottom: 20, border: "1px solid #1e3a5f", maxHeight: 200, objectFit: "cover" }} />}
       {FIELDS.map(({ key, label }) => (
         <div key={key} style={{ marginBottom: 14 }}>
-          <div style={{ color: "#4f8ef7", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
+          <div style={{ color: "#4f8ef7", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4, fontWeight: 900 }}>{label}</div>
           <input value={editFields[key] || ""} onChange={e => setEditFields(prev => ({ ...prev, [key]: e.target.value }))}
             style={{ width: "100%", boxSizing: "border-box", background: "#131b27", border: "1px solid #1e3a5f", borderRadius: 6, padding: "12px 14px", color: "#fff", fontSize: 17, fontFamily: "'Courier New', monospace", outline: "none" }} />
         </div>
@@ -197,8 +200,8 @@ function CapturePage({ onSave, onBack }) {
   return (
     <div style={{ minHeight: "100dvh", background: "#0d1117", padding: "20px 20px 40px", fontFamily: "'Courier New', monospace", display: "flex", flexDirection: "column", alignItems: "center" }}>
       {backBtn("← Back", onBack)}
-      <div style={{ color: "#4f8ef7", fontSize: 10, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 }}>Step 1 of 2</div>
-      <div style={{ color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 1, marginBottom: 8, textAlign: "center" }}>Photograph the Slip</div>
+      <div style={{ color: "#4f8ef7", fontSize: 10, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4, fontWeight: 900 }}>Step 1 of 2</div>
+      <div style={{ color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 1, marginBottom: 8, textAlign: "center" }}>PHOTOGRAPH THE SLIP</div>
       <div style={{ color: "#8892a4", fontSize: 13, textAlign: "center", marginBottom: 24, maxWidth: 280 }}>
         Take a photo or choose from your gallery.
       </div>
@@ -250,7 +253,7 @@ function AdminRegister({ entries }) {
   return (
     <div style={{ minHeight: "100vh", background: "#070b12", fontFamily: "'Courier New', monospace", color: "#fff" }}>
       <div style={{ padding: "24px 24px 20px", borderBottom: "1px solid #1a2540" }}>
-        <div style={{ fontSize: 9, letterSpacing: 4, color: "#4f8ef7", textTransform: "uppercase", marginBottom: 4 }}>Internal Admin</div>
+        <div style={{ fontSize: 9, letterSpacing: 4, color: "#4f8ef7", textTransform: "uppercase", marginBottom: 4, fontWeight: 900 }}>Internal Admin</div>
         <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: 2 }}>DELIVERY REGISTER</div>
         <div style={{ color: "#8892a4", fontSize: 12, marginTop: 4 }}>{entries.length} record{entries.length !== 1 ? "s" : ""} logged</div>
       </div>
@@ -320,13 +323,36 @@ export default function App() {
 
   if (view === "slip") return (
     <div style={{ minHeight: "100vh", background: "#f0f0e8", display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 16px" }}>
-      <div style={{ marginBottom: 20, display: "flex", gap: 12 }}>
+      <div className="no-print" style={{ marginBottom: 20, display: "flex", gap: 12 }}>
         <button onClick={() => setView("home")} style={navBtn}>← Back</button>
-        <button onClick={() => window.print()} style={{ ...navBtn, background: "#1a1a2e", color: "#fff" }}>🖨 Print Slip</button>
+        <button onClick={() => window.print()} style={{ ...navBtn, background: "#1a1a2e", color: "#fff" }}>🖨 Print 2 per A4</button>
       </div>
-      <SlipTemplate captureUrl={CAPTURE_URL} />
-      <div style={{ marginTop: 16, fontSize: 11, color: "#888", fontFamily: "monospace", textAlign: "center", maxWidth: 420 }}>
-        The QR code links to the capture form. Print multiple copies and distribute to drivers.
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { margin: 0; background: white; }
+          .print-page {
+            width: 210mm;
+            height: 297mm;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-evenly;
+            padding: 8mm;
+            box-sizing: border-box;
+            background: white;
+          }
+        }
+        @media screen {
+          .print-page { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+        }
+      `}</style>
+      <div className="print-page">
+        <SlipTemplate captureUrl={CAPTURE_URL} />
+        <SlipTemplate captureUrl={CAPTURE_URL} />
+      </div>
+      <div className="no-print" style={{ marginTop: 16, fontSize: 11, color: "#888", fontFamily: "monospace", textAlign: "center", maxWidth: 420 }}>
+        Prints 2 slips per A4 page. Distribute to drivers.
       </div>
     </div>
   );
@@ -346,7 +372,7 @@ export default function App() {
       <div style={{ position: "relative", textAlign: "center", maxWidth: 380 }}>
         <div style={{ fontSize: 10, letterSpacing: 5, color: "#4f8ef7", textTransform: "uppercase", marginBottom: 12 }}>Delivery Management System</div>
         <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: 3, color: "#fff", textTransform: "uppercase", lineHeight: 1.1, marginBottom: 8 }}>SUPPLIER<br />DELIVERY<br />REGISTER</div>
-        <div style={{ color: "#8892a4", fontSize: 13, marginBottom: 48, lineHeight: 1.6 }}>Scan. Photograph. Log. Done.</div>
+        <div style={{ color: "#8892a4", fontSize: 13, marginBottom: 48, lineHeight: 1.6, fontWeight: 700 }}>Scan. Photograph. Log. Done.</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <button onClick={() => setView("capture")} style={{ padding: "18px 24px", background: "#4f8ef7", border: "none", borderRadius: 8, color: "#fff", fontWeight: 900, fontSize: 14, fontFamily: "'Courier New', monospace", letterSpacing: 3, textTransform: "uppercase", cursor: "pointer" }}>📷 &nbsp;LOG A DELIVERY</button>
           <button onClick={() => setView("slip")} style={{ padding: "16px 24px", background: "transparent", border: "1px solid #1e3a5f", borderRadius: 8, color: "#8892a4", fontWeight: 700, fontSize: 13, fontFamily: "'Courier New', monospace", letterSpacing: 2, textTransform: "uppercase", cursor: "pointer" }}>🖨 &nbsp;PRINT SLIP TEMPLATE</button>
