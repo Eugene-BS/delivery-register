@@ -44,12 +44,7 @@ async function extractFromImage(base64Image) {
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { 
-  "Content-Type": "application/json",
-  "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY,
-  "anthropic-version": "2023-06-01",
-  "anthropic-dangerous-direct-browser-access": "true"
-},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
       max_tokens: 500,
@@ -111,6 +106,7 @@ function CapturePage({ onSave, onBack }) {
   const [imagePreview, setImagePreview] = useState(null);
   const [editFields, setEditFields] = useState({});
   const [error, setError] = useState("");
+  const [uploadedAt, setUploadedAt] = useState("");
   const cameraRef = useRef();
   const galleryRef = useRef();
 
@@ -152,7 +148,11 @@ function CapturePage({ onSave, onBack }) {
 
   const handleSave = async () => {
     setStep("saving");
-    await onSave({ id: uid(), timestamp: new Date().toISOString(), imagePreview, ...editFields });
+    const now = new Date();
+    const timestamp = now.toISOString();
+    const uploadedAtStr = now.toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" });
+    setUploadedAt(uploadedAtStr);
+    await onSave({ id: uid(), timestamp, uploadedAt: uploadedAtStr, imagePreview, ...editFields });
     setStep("done");
   };
 
@@ -166,7 +166,8 @@ function CapturePage({ onSave, onBack }) {
     <div style={{ minHeight: "100dvh", background: "#0d1117", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#00c853", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, marginBottom: 20 }}>✓</div>
       <div style={{ color: "#fff", fontSize: 22, fontWeight: 700, fontFamily: "'Courier New', monospace", letterSpacing: 2, marginBottom: 8 }}>LOGGED</div>
-      <div style={{ color: "#8892a4", fontSize: 13, textAlign: "center", marginBottom: 24 }}>Delivery has been recorded in the register.</div>
+      <div style={{ color: "#8892a4", fontSize: 13, textAlign: "center", marginBottom: 8 }}>Delivery has been recorded in the register.</div>
+      <div style={{ color: "#4f8ef7", fontSize: 12, fontFamily: "'Courier New', monospace", fontWeight: 700, marginBottom: 24 }}>{uploadedAt}</div>
       <button onClick={onBack} style={{ background: "#1e3a5f", border: "none", borderRadius: 6, color: "#fff", fontSize: 13, fontFamily: "'Courier New', monospace", padding: "10px 20px", cursor: "pointer" }}>← Back to Home</button>
     </div>
   );
@@ -251,6 +252,7 @@ function CapturePage({ onSave, onBack }) {
 function AdminRegister({ entries }) {
   const [selected, setSelected] = useState(null);
   const FIELDS = [
+    { key: "uploadedAt", label: "Uploaded" },
     { key: "date", label: "Date" }, { key: "timeIn", label: "Time In" },
     { key: "supplierName", label: "Supplier" }, { key: "driverName", label: "Driver" },
     { key: "vehicleReg", label: "Reg" }, { key: "deliveryNoPO", label: "PO/DN" },
