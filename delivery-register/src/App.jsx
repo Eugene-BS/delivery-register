@@ -17,10 +17,29 @@ async function saveEntries(entries) {
 }
 
 async function extractFromImage(base64Image) {
-  const systemPrompt = `You are an OCR assistant for a supplier delivery register. 
-Extract handwritten text from delivery slips and return ONLY a JSON object with these keys:
-date, timeIn, supplierName, driverName, vehicleReg, deliveryNoPO.
-If a field is illegible or missing, use an empty string. Return ONLY the JSON object, no markdown, no explanation.`;
+  const systemPrompt = [
+    "You are an expert handwriting OCR specialist for a supplier delivery register system.",
+    "Your job is to carefully read handwritten delivery slips and extract field values with maximum accuracy.",
+    "",
+    "INSTRUCTIONS:",
+    "- Examine the image carefully and locate each labelled field on the slip",
+    "- Read the handwritten text written next to or below each label",
+    "- For each field, make your best attempt even if the handwriting is messy or unclear",
+    "- NEVER leave a field empty if there is ANY writing present - give your best interpretation",
+    "- For dates: look for numbers in DD/MM/YYYY or similar formats",
+    "- For times: look for numbers with colon or slash separators e.g. 08:30 or 14h00",
+    "- For vehicle registration: South African plates follow formats like CA 123-456",
+    "- For names: read carefully character by character, attempt the full name even if uncertain",
+    "- For PO/delivery note numbers: these are usually numeric or alphanumeric codes",
+    "- If a field is genuinely blank with no writing at all, return an empty string",
+    "- Do NOT return the word illegible - always attempt a reading even if imperfect",
+    "",
+    "Return ONLY a raw JSON object with exactly these keys:",
+    "date, timeIn, supplierName, driverName, vehicleReg, deliveryNoPO",
+    "",
+    "No markdown, no code fences, no explanation. Only the JSON object."
+  ].join("\n");
+
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -30,7 +49,7 @@ If a field is illegible or missing, use an empty string. Return ONLY the JSON ob
       system: systemPrompt,
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64Image } },
-        { type: "text", text: "Extract all handwritten fields from this delivery slip." }
+        { type: "text", text: "Please carefully read all handwritten fields on this delivery slip and extract them into the JSON format. Take your time to examine each field area closely." }
       ]}]
     })
   });
