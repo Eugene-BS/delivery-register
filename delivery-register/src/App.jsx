@@ -330,21 +330,26 @@ export default function App() {
       <style>{`
         @media print {
           .no-print { display: none !important; }
+          @page { size: A4 landscape; margin: 6mm; }
           body { margin: 0; background: white; }
           .print-page {
-            width: 210mm;
-            height: 297mm;
+            width: 285mm;
+            height: 197mm;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-evenly;
-            padding: 8mm;
+            flex-direction: row;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 6mm;
             box-sizing: border-box;
             background: white;
           }
+          .print-page > div {
+            transform: scale(0.88);
+            transform-origin: top left;
+          }
         }
         @media screen {
-          .print-page { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+          .print-page { display: flex; flex-direction: row; align-items: flex-start; gap: 24px; flex-wrap: wrap; justify-content: center; }
         }
       `}</style>
       <div className="print-page">
